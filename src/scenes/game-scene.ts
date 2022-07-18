@@ -13,6 +13,7 @@ export class GameScene extends Phaser.Scene {
     private secondSelectedTile: Tile;
     tweenTile: Phaser.Tweens.Tween;
 
+    private changingTile: boolean = false;
     constructor() {
         super({
         key: 'GameScene'
@@ -44,6 +45,14 @@ export class GameScene extends Phaser.Scene {
 
         // Check if matches on the start
         this.checkMatches();
+
+        this.time.addEvent({
+            delay: 5000,                // ms
+            callback: this.handleAnimsLoop,
+            //args: [],
+            callbackScope: this,
+            loop: true
+        });
     }
 
     /**
@@ -54,7 +63,7 @@ export class GameScene extends Phaser.Scene {
     private addTile(x: number, y: number): Tile {
         // Get a random tile
         let randomTileType: string =
-        CONST.candyTypes[Phaser.Math.RND.between(0, CONST.candyTypes.length - 1)];
+        CONST.candyTypes[Phaser.Math.RND.between(0, CONST.candyTypes.length - 1)]; ///test
 
         // Return the created tile
         return new Tile({
@@ -159,6 +168,40 @@ export class GameScene extends Phaser.Scene {
             this.checkMatches();
             }
         });
+    
+        if (this.firstSelectedTile.y === this.secondSelectedTile.y) {
+            this.add.tween({
+                targets: this.firstSelectedTile,
+                y: '-= 50',
+                ease: 'Linear',
+                duration: 200,
+                yoyo: true
+            });
+            
+            this.add.tween({
+                targets: this.secondSelectedTile,
+                y: '+= 50',
+                ease: 'Linear',
+                duration: 200,
+                yoyo: true
+            });
+        } else {
+            this.add.tween({
+                targets: this.firstSelectedTile,
+                x: '-= 50',
+                ease: 'Linear',
+                duration: 200,
+                yoyo: true
+            });
+            
+            this.add.tween({
+                targets: this.secondSelectedTile,
+                x: '+= 50',
+                ease: 'Linear',
+                duration: 200,
+                yoyo: true
+            });
+        }
 
         this.firstSelectedTile = this.tileGrid[
             firstTilePosition.y / CONST.tileHeight
@@ -170,6 +213,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     private checkMatches(): void {
+        this.changingTile = true;
         //Call the getMatches function to check for spots where there is
         //a run of three or more tiles in a row
         let matches = this.getMatches(this.tileGrid);
@@ -190,6 +234,7 @@ export class GameScene extends Phaser.Scene {
         this.tileUp();
         this.canMove = true;
         }
+        this.changingTile = false;
     }
 
     private resetTile(): void {
@@ -216,6 +261,17 @@ export class GameScene extends Phaser.Scene {
                 yoyo: false
             });
 
+            this.time.delayedCall(200, () => {
+                this.add.tween({
+                    targets: tempTile,
+                    y: '-=20',
+                    ease: 'Linear',
+                    duration: 100,
+                    repeat: 0,
+                    yoyo: true
+                });
+            })
+
             //The positions have changed so start this process again from the bottom
             //NOTE: This is not set to me.tileGrid[i].length - 1 because it will immediately be decremented as
             //we are at the end of the loop.
@@ -230,13 +286,45 @@ export class GameScene extends Phaser.Scene {
         for (var y = 0; y < this.tileGrid.length; y++) {
         for (var x = 0; x < this.tileGrid[y].length; x++) {
             if (this.tileGrid[y][x] === undefined) {
-            //Found a blank spot so lets add animate a tile there
-            let tile = this.addTile(x, y);
+                //Found a blank spot so lets add animate a tile there
+                let tile = this.addTile(x, y);
 
-            //And also update our "theoretical" grid
-            this.tileGrid[y][x] = tile;
+                tile.setAlpha(0);
+                this.tweens.add({
+                    targets: tile,
+                    alpha: 1,
+                    duration: 500, 
+                })
+
+                //And also update our "theoretical" grid
+                this.tileGrid[y][x] = tile;
             }
         }
+        }
+    }
+
+    private handleAnimsLoop() {
+        if (!this.canMove || this.firstSelectedTile !== undefined) return
+        var i = 0;
+        for (let y = 0; y < this.tileGrid.length ; y++) {
+            // Loop through each tile in column from bottom to top
+            for (let x = 0; x < this.tileGrid[y].length ; x++) {
+                    let tile = this.tileGrid[y][x];
+                    this.tweens.add({
+                        targets: tile,
+                        scale: 1.2,
+                        x: '-=15',
+                        y: '-=15',
+                        ease: 'Sine.easeInOut',
+                        duration: 300,
+                        delay: i * 50,
+                        yoyo: true
+                    });
+
+                    i++;
+                    
+                    if (i % 8 === 0) i=0;
+            }
         }
     }
 
@@ -259,9 +347,9 @@ export class GameScene extends Phaser.Scene {
                 // Remove the tile from the theoretical grid
                 if (tilePos.x !== -1 && tilePos.y !== -1) {
                     this.createExplosion(tempArr, 0, tempArr.length)
-                    this.time.delayedCall(1500, ()=>{
-                        this.tileGrid[tilePos.y][tilePos.x] = undefined;
-                    });
+                    // this.time.delayedCall(1500, ()=>{
+                    //     this.tileGrid[tilePos.y][tilePos.x] = undefined;
+                    // });
                     
                 }
             }
@@ -269,6 +357,13 @@ export class GameScene extends Phaser.Scene {
     }
     createExplosion(_arr: any, _idx: number, _maxIdx: number) {
         if (_idx === _maxIdx) {
+            for (var j = 0; j < _arr.length; j++) {
+                let tile = _arr[j];
+                let tilePos = this.getTilePos(this.tileGrid, tile);
+                if (tilePos.x !== -1 && tilePos.y !== -1) {
+                    this.tileGrid[tilePos.y][tilePos.x] = undefined;
+                }
+            }
             this.resetTile();
             this.time.delayedCall(500, ()=>{
                 this.fillTile();
