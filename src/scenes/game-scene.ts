@@ -46,13 +46,13 @@ export class GameScene extends Phaser.Scene {
         // Check if matches on the start
         this.checkMatches();
 
-        this.time.addEvent({
-            delay: 5000,                // ms
-            callback: this.handleAnimsLoop,
-            //args: [],
-            callbackScope: this,
-            loop: true
-        });
+        // this.time.addEvent({
+        //     delay: 5000,                // ms
+        //     callback: this.handleAnimsLoop,
+        //     //args: [],
+        //     callbackScope: this,
+        //     loop: true
+        // });
     }
 
     /**
@@ -301,6 +301,7 @@ export class GameScene extends Phaser.Scene {
             }
         }
         }
+        this.handleAnimsLoop()
     }
 
     private handleAnimsLoop() {
